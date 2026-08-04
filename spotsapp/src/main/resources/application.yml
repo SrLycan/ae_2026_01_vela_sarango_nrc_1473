@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: spots-app-backend
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # el schema lo maneja Flyway, no Hibernate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.spotsapp: DEBUG
+    org.springframework.security: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/spotsapp
+    username: spotsapp
+    password: spotsapp
+    driver-class-name: org.postgresql.Driver
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/REPLACE_ME}
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET:spots-app-dev}
+    region: ${AWS_REGION:us-east-1}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://db:5432/spotsapp
+    username: ${DB_USERNAME:spotsapp}
+    password: ${DB_PASSWORD:spotsapp}
+    driver-class-name: org.postgresql.Driver
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URI}
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET:}
+    region: ${AWS_REGION:us-east-1}

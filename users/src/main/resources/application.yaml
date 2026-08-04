@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: users
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+
+server:
+  port: 8686
+
+logging:
+  level:
+    com.pucetec.users: DEBUG
+    org.springframework.security: INFO
+
+---
+# Perfil "dev": correr ./gradlew bootRun en tu máquina, contra un Postgres local
+# (por ejemplo levantado con "docker compose up users-db" desde la raíz del monorepo).
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:postgresql://localhost:5434/users
+    username: users
+    password: users
+    driver-class-name: org.postgresql.Driver
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/REPLACE_ME}
+
+---
+# Perfil "docker": el que usa docker-compose.yml de la raíz — "users-db" es el nombre
+# del servicio de Postgres dentro de la red de Docker, no un host real.
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://users-db:5432/users
+    username: ${DB_USERNAME:users}
+    password: ${DB_PASSWORD:users}
+    driver-class-name: org.postgresql.Driver
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URI}

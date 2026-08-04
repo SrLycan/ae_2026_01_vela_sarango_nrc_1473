@@ -1,0 +1,141 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Gateway — único servicio expuesto al host/internet.
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ae-nginx
+    restart: unless-stopped
+    depends_on:
+      - users
+      - spotsapp
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    networks:
+      - ae-net
+
+  # ---------------------------------------------------------------------------
+  # Microservicio: users
+  # ---------------------------------------------------------------------------
+  users-db:
+    image: postgres:16-alpine
+    container_name: ae-users-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: users
+      POSTGRES_USER: ${USERS_DB_USERNAME:-users}
+      POSTGRES_PASSWORD: ${USERS_DB_PASSWORD:-users}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - users-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USERS_DB_USERNAME:-users} -d users"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ae-net
+
+  users:
+    build:
+      context: ./users
+      dockerfile: Dockerfile
+    container_name: ae-users
+    restart: unless-stopped
+    depends_on:
+      users-db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_USERNAME: ${USERS_DB_USERNAME:-users}
+      DB_PASSWORD: ${USERS_DB_PASSWORD:-users}
+      # Mismo User Pool de Cognito que spotsapp — un solo login sirve para los dos micros.
+      COGNITO_ISSUER_URI: ${COGNITO_ISSUER_URI:?Debes definir COGNITO_ISSUER_URI (ver .env.example)}
+    expose:
+      - "8686"
+    networks:
+      - ae-net
+
+  # ---------------------------------------------------------------------------
+  # Microservicio: spotsapp (dominio del proyecto — spots, reviews, follows, media, etc.)
+  # ---------------------------------------------------------------------------
+  spotsapp-db:
+    image: postgres:16-alpine
+    container_name: ae-spotsapp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: spotsapp
+      POSTGRES_USER: ${SPOTSAPP_DB_USERNAME:-spotsapp}
+      POSTGRES_PASSWORD: ${SPOTSAPP_DB_PASSWORD:-spotsapp}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - spotsapp-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SPOTSAPP_DB_USERNAME:-spotsapp} -d spotsapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ae-net
+
+  spotsapp:
+    build:
+      context: ./spotsapp
+      dockerfile: Dockerfile
+    container_name: ae-spotsapp
+    restart: unless-stopped
+    depends_on:
+      spotsapp-db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_USERNAME: ${SPOTSAPP_DB_USERNAME:-spotsapp}
+      DB_PASSWORD: ${SPOTSAPP_DB_PASSWORD:-spotsapp}
+      COGNITO_ISSUER_URI: ${COGNITO_ISSUER_URI:?Debes definir COGNITO_ISSUER_URI (ver .env.example)}
+      # S3 (MediaService / ADR-001). Vacías en EC2 con IAM Role (ver docs/despliegue-ec2.md).
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    expose:
+      - "8080"
+    networks:
+      - ae-net
+
+  # ---------------------------------------------------------------------------
+  # Explorador de BD (criterio de rúbrica): una sola instancia de pgAdmin
+  # conectada a las dos bases (se agregan como "servers" desde la UI la primera vez).
+  # Atado a 127.0.0.1 a propósito — no se expone a internet igual que las bases de
+  # datos. Para el día de la defensa: túnel SSH (ver docs/despliegue-ec2.md) o,
+  # temporalmente, abrir el puerto 5050 en el Security Group y volverlo a cerrar después.
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: ae-pgadmin
+    restart: unless-stopped
+    depends_on:
+      - users-db
+      - spotsapp-db
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@spotsapp.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "127.0.0.1:5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - ae-net
+
+volumes:
+  users-db-data:
+  spotsapp-db-data:
+  pgadmin-data:
+
+networks:
+  ae-net:
+    driver: bridge
