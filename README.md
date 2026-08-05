@@ -79,9 +79,3 @@ Ver [`docs/despliegue-ec2.md`](./docs/despliegue-ec2.md) — la mecánica no cam
 Docker Compose + IAM Role para S3), solo que ahora `docker compose up -d --build` levanta
 5 servicios en vez de 2, y el puerto público pasa a ser el 80 (nginx) en vez del 8080
 directo al backend.
-
-## Pendiente (ver conversación / próximos pasos)
-
-- Formato de logging estándar (línea única con `sub=`, `event=`, etc.) en ambos micros.
-- Colección de Postman versionada con los flujos punta a punta (login → crear spot → etc.).
-- Medir y completar cobertura de tests al 100% en ambos micros.
