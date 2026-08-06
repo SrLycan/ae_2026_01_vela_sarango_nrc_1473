@@ -53,7 +53,7 @@ spring:
       on-profile: docker
 
   datasource:
-    url: jdbc:postgresql://db:5432/spotsapp
+    url: jdbc:postgresql://spotsapp-db:5432/spotsapp
     username: ${DB_USERNAME:spotsapp}
     password: ${DB_PASSWORD:spotsapp}
     driver-class-name: org.postgresql.Driver

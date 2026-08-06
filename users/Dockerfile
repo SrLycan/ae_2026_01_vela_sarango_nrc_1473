@@ -14,11 +14,11 @@ RUN ./gradlew bootJar --no-daemon -x test
 FROM eclipse-temurin:21-jre AS runtime
 WORKDIR /app
 
-RUN groupadd --system users && useradd --system --gid users users
+RUN groupadd --system usersvc && useradd --system --gid usersvc usersvc
 
 COPY --from=build /app/build/libs/*.jar app.jar
-RUN chown users:users app.jar
-USER users
+RUN chown usersvc:usersvc app.jar
+USER usersvc
 
 EXPOSE 8686
 
