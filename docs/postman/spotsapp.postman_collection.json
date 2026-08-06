@@ -1,0 +1,1177 @@
+{
+  "info": {
+    "name": "Spots App — ae_2026_01_vela_sarango_nrc_1473",
+    "description": "Coleccion completa: microservicio users + microservicio spotsapp, via nginx (puerto 80). Corre 'Auth (Cognito) > Login' primero — el token queda guardado y el resto de requests lo usan automaticamente. Los endpoints publicos (marcados 'auth_none') no mandan token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://52.204.103.205",
+      "type": "string"
+    },
+    {
+      "key": "cognitoEndpoint",
+      "value": "https://cognito-idp.us-east-1.amazonaws.com",
+      "type": "string"
+    },
+    {
+      "key": "cognitoClientId",
+      "value": "9aomfc57ah7nn4vo88n8evo77",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "usuario",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "CAMBIA_ESTO",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spotId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "reviewId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "uploadUrl",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "publicUrl",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth (Cognito)",
+      "item": [
+        {
+          "name": "Login (obtener accessToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-amz-json-1.1"
+              },
+              {
+                "key": "X-Amz-Target",
+                "value": "AWSCognitoIdentityProviderService.InitiateAuth"
+              }
+            ],
+            "url": {
+              "raw": "{{cognitoEndpoint}}/",
+              "host": [
+                "{{cognitoEndpoint}}"
+              ],
+              "path": []
+            },
+            "description": "Llama DIRECTO a Cognito (no pasa por nginx/backend) usando USER_PASSWORD_AUTH. Guarda el accessToken en la variable de coleccion {{accessToken}} — el resto de requests de esta coleccion ya lo usan automaticamente (Bearer Token heredado). Requisito: el App Client de Cognito debe tener habilitado el auth flow ALLOW_USER_PASSWORD_AUTH (Cognito console -> User pool -> App clients -> tu client -> Authentication flows). Cambia {{username}} / {{password}} en las variables de la coleccion antes de correrlo.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"AuthFlow\": \"USER_PASSWORD_AUTH\",\n  \"ClientId\": \"{{cognitoClientId}}\",\n  \"AuthParameters\": {\n    \"USERNAME\": \"{{username}}\",\n    \"PASSWORD\": \"{{password}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.AuthenticationResult && data.AuthenticationResult.AccessToken) {",
+                  "    pm.collectionVariables.set(\"accessToken\", data.AuthenticationResult.AccessToken);",
+                  "    console.log(\"accessToken guardado en la variable de coleccion\");",
+                  "} else {",
+                  "    console.log(\"No se recibio AuthenticationResult - revisa USERNAME/PASSWORD, o si ALLOW_USER_PASSWORD_AUTH esta habilitado en el App Client de Cognito.\");",
+                  "}",
+                  "pm.test(\"Login devuelve AccessToken\", function () {",
+                  "    pm.expect(data.AuthenticationResult).to.have.property(\"AccessToken\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Corre 'Login' primero — todo lo demas depende del token que guarda acá."
+    },
+    {
+      "name": "Users (microservicio users)",
+      "item": [
+        {
+          "name": "Crear mi perfil (POST /api/users/me)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Crea el perfil del usuario autenticado (segun el 'sub' del token). Llamalo una vez despues del primer login/registro.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario de Prueba\",\n  \"email\": \"usuario@spotsapp.local\",\n  \"phone\": \"0999999999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ver mi perfil (GET /api/users/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar mi perfil (PUT /api/users/me)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario de Prueba Editado\",\n  \"email\": \"usuario@spotsapp.local\",\n  \"phone\": \"0988888888\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar todos los usuarios (GET /api/users)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Revisa en el codigo si esta restringido por rol; pruebalo con un token de ADMIN y con uno de USER para comparar."
+          },
+          "response": []
+        },
+        {
+          "name": "Ver usuario por id (GET /api/users/{id})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Ver usuario por cognitoId (GET /api/users/cognito/{cognitoId})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/cognito/REEMPLAZA_CON_UN_SUB_REAL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "cognito",
+                "REEMPLAZA_CON_UN_SUB_REAL"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar usuario (DELETE /api/users/{id})",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            },
+            "description": "Endpoint administrativo — probar con token de ADMIN."
+          },
+          "response": []
+        }
+      ],
+      "description": "Microservicio de perfiles. Todas las rutas van con prefijo /api/users/ (asi las enruta nginx)."
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Listar categorias (GET /categories)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ver categoria (GET /categories/{id})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear categoria (POST /categories)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            },
+            "description": "Solo ADMIN. A proposito el nombre trae espacios de mas — deberia guardarse como 'Ciudad' (regularizacion de espacios).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"  Ciudad  \",\n  \"description\": \"Lugares urbanos\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    if (data.id) {",
+                  "        pm.collectionVariables.set(\"categoryId\", data.id);",
+                  "        console.log(\"categoryId guardado: \" + data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar categoria (PUT /categories/{id})",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Solo ADMIN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ciudad\",\n  \"description\": \"Lugares urbanos y arquitectura\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar categoria (DELETE /categories/{id})",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Solo ADMIN."
+          },
+          "response": []
+        }
+      ],
+      "description": "Publicas para leer (GET); crear/editar/borrar es solo ADMIN."
+    },
+    {
+      "name": "Spots",
+      "item": [
+        {
+          "name": "Listar spots aprobados (GET /spots)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spots?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Publico — solo status APPROVED. Filtros opcionales: categoryId, rarity.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mis spots (GET /spots/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spots/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "me"
+              ]
+            },
+            "description": "Requiere login — spots propios en cualquier estado."
+          },
+          "response": []
+        },
+        {
+          "name": "Spots pendientes (GET /spots/pending)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spots/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "pending"
+              ]
+            },
+            "description": "Solo ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Ver spot (GET /spots/{id})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear spot (POST /spots)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/spots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots"
+              ]
+            },
+            "description": "Requiere login. Nace en estado PENDING. Nombre con espacios de mas a proposito, para probar la regularizacion.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"  Plaza Grande  \",\n  \"description\": \"Plaza central historica\",\n  \"latitude\": -0.2201641,\n  \"longitude\": -78.5123274,\n  \"address\": \"Centro Historico, Quito\",\n  \"categoryId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    if (data.id) {",
+                  "        pm.collectionVariables.set(\"spotId\", data.id);",
+                  "        console.log(\"spotId guardado: \" + data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar spot (PUT /spots/{id})",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}"
+              ]
+            },
+            "description": "Solo el dueño del spot.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Plaza Grande\",\n  \"description\": \"Plaza central historica, remodelada\",\n  \"latitude\": -0.2201641,\n  \"longitude\": -78.5123274,\n  \"address\": \"Centro Historico, Quito\",\n  \"categoryId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear spot duplicado (misma ubicacion) — debe fallar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/spots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots"
+              ]
+            },
+            "description": "Prueba de la regla de negocio nueva: mismo usuario + misma ubicacion exacta + spot ya PENDING/APPROVED -> debe devolver 400/409, no 201.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Otro nombre, mismo punto\",\n  \"description\": \"Deberia rechazarse por duplicado de ubicacion\",\n  \"latitude\": -0.2201641,\n  \"longitude\": -78.5123274,\n  \"address\": \"Centro Historico, Quito\",\n  \"categoryId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Aprobar spot (PATCH /spots/{id}/approve)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}",
+                "approve"
+              ]
+            },
+            "description": "Solo ADMIN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rarity\": \"COMMON\",\n  \"pointsReward\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Rechazar spot (PATCH /spots/{id}/reject)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}",
+                "reject"
+              ]
+            },
+            "description": "Solo ADMIN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejectionReason\": \"Informacion insuficiente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar spot (DELETE /spots/{id})",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}"
+              ]
+            },
+            "description": "Solo el dueño del spot."
+          },
+          "response": []
+        }
+      ],
+      "description": "El corazon del dominio. 'Crear spot' guarda automaticamente el id en {{spotId}} para las demas requests."
+    },
+    {
+      "name": "Media",
+      "item": [
+        {
+          "name": "Listar media de un spot (GET /spots/{spotId}/media)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}/media",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}",
+                "media"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1. Presign (POST /spots/{spotId}/media/presign)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}/media/presign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}",
+                "media",
+                "presign"
+              ]
+            },
+            "description": "Paso 1 de 3. Guarda {{uploadUrl}} y {{publicUrl}} automaticamente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"foto.jpg\",\n  \"contentType\": \"image/jpeg\",\n  \"type\": \"IMAGE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    if (data.uploadUrl) pm.collectionVariables.set(\"uploadUrl\", data.uploadUrl);",
+                  "    if (data.publicUrl) pm.collectionVariables.set(\"publicUrl\", data.publicUrl);",
+                  "    console.log(\"uploadUrl y publicUrl guardados\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Subir archivo a S3 (PUT {{uploadUrl}}) — MANUAL",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{uploadUrl}}"
+            },
+            "description": "Paso 2 de 3 — MANUAL. IMPORTANTE: este request NO debe llevar el header Authorization (por eso esta en 'No Auth', a diferencia del resto de la coleccion) — un presigned URL de S3 ya trae su propia firma en la query string, y si ademas mandas un Authorization de Cognito, S3 devuelve 400 'Only one auth mechanism allowed'. En Postman: pestaña Body -> binary -> selecciona un archivo de imagen. En Headers agrega Content-Type: image/jpeg (debe coincidir EXACTO con el contentType que mandaste en el presign, o S3 devuelve 403 por firma invalida).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Confirmar subida (POST /spots/{spotId}/media/confirm)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}/media/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}",
+                "media",
+                "confirm"
+              ]
+            },
+            "description": "Paso 3 de 3. Registra la media en la base de datos una vez que el PUT a S3 (paso 2) fue 200 OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{publicUrl}}\",\n  \"type\": \"IMAGE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar media (DELETE /media/{id})",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "1"
+              ]
+            },
+            "description": "Solo el dueño del spot."
+          },
+          "response": []
+        }
+      ],
+      "description": "Subida en 3 pasos via presigned URL de S3 (ADR-001) — el paso 2 es manual, ver su descripcion."
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Listar reviews de un spot (GET /spots/{spotId}/reviews)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spots/{{spotId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spots",
+                "{{spotId}}",
+                "reviews"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear review (POST /reviews)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reviews"
+              ]
+            },
+            "description": "Requiere login.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"spotId\": {{spotId}},\n  \"rating\": 5,\n  \"comment\": \"Excelente lugar, muy recomendado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    if (data.id) {",
+                  "        pm.collectionVariables.set(\"reviewId\", data.id);",
+                  "        console.log(\"reviewId guardado: \" + data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar review (PUT /reviews/{id})",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Solo el autor de la review.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Editado: sigue siendo muy bueno\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar review (DELETE /reviews/{id})",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Solo el autor de la review."
+          },
+          "response": []
+        }
+      ],
+      "description": "'Crear review' guarda automaticamente el id en {{reviewId}}."
+    },
+    {
+      "name": "Follows",
+      "item": [
+        {
+          "name": "Seguir a un usuario (POST /follows/{username})",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/otro_usuario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                "otro_usuario"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Dejar de seguir (DELETE /follows/{username})",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/otro_usuario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                "otro_usuario"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "A quienes sigo (GET /follows/me/following)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/me/following",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                "me",
+                "following"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Quienes me siguen (GET /follows/me/followers)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/me/followers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                "me",
+                "followers"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ],
+      "description": "Requiere login en todos los endpoints."
+    },
+    {
+      "name": "Feed",
+      "item": [
+        {
+          "name": "Feed de seguidos (GET /feed)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/feed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feed"
+              ]
+            },
+            "description": "Requiere login. Spots APPROVED de las cuentas que sigo."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Stats",
+      "item": [
+        {
+          "name": "Estadisticas de perfil (GET /profile/{username}/stats)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profile/usuario/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile",
+                "usuario",
+                "stats"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    }
+  ]
+}

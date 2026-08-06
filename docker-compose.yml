@@ -109,9 +109,10 @@ services:
   # ---------------------------------------------------------------------------
   # Explorador de BD (criterio de rúbrica): una sola instancia de pgAdmin
   # conectada a las dos bases (se agregan como "servers" desde la UI la primera vez).
-  # Atado a 127.0.0.1 a propósito — no se expone a internet igual que las bases de
-  # datos. Para el día de la defensa: túnel SSH (ver docs/despliegue-ec2.md) o,
-  # temporalmente, abrir el puerto 5050 en el Security Group y volverlo a cerrar después.
+  # Se accede vía nginx en /pgadmin/ — NO tiene puerto propio publicado al host
+  # (mismo criterio que users/spotsapp: solo nginx habla directo con el mundo exterior).
+  # La protección real sigue siendo el login de pgAdmin — usa una PGADMIN_PASSWORD
+  # fuerte en tu .env, ya que ahora es alcanzable desde cualquier IP a través de nginx.
   # ---------------------------------------------------------------------------
   pgadmin:
     image: dpage/pgadmin4:8
@@ -124,8 +125,12 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@spotsapp.local}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: "False"
-    ports:
-      - "127.0.0.1:5050:80"
+      # Comillas simples adentro de las dobles: pgAdmin lee este valor como literal de
+      # Python, no como string plano — así es como ellos mismos documentan la config
+      # para correr detrás de un proxy en un subpath (ver nginx/nginx.conf, /pgadmin/).
+      PGADMIN_CONFIG_APPLICATION_ROOT: "'/pgadmin'"
+    expose:
+      - "80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     networks:

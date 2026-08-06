@@ -1,5 +1,6 @@
 package com.spotsapp.dto.spot
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import com.spotsapp.entities.enums.Rarity
 import com.spotsapp.entities.enums.SpotStatus
 import jakarta.validation.constraints.Max
@@ -91,6 +92,8 @@ data class SpotResponse(
     val rarity: Rarity?,
     val pointsReward: Int?,
     val rejectionReason: String?,
+    @field:JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     val createdAt: Instant,
+    @field:JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     val updatedAt: Instant
 )

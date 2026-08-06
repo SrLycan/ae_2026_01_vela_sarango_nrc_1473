@@ -50,12 +50,18 @@ gateway, debe apuntar al puerto 80 (ver la nota en el README de `spots-app-mobil
 
 ## Explorador de base de datos (pgAdmin)
 
+Se accede a través de nginx, en `/pgadmin/` — funciona igual en local que ya desplegado en EC2:
+
 ```
-http://localhost:5050   (o vía túnel SSH si es en EC2 — ver docs/despliegue-ec2.md)
+http://localhost/pgadmin/          (local)
+http://<IP_PUBLICA_EC2>/pgadmin/   (desplegado)
 ```
 
-Entra con `PGADMIN_EMAIL` / `PGADMIN_PASSWORD` de tu `.env`. La primera vez, agrega los
-dos servidores manualmente (**Add New Server**):
+Entra con `PGADMIN_EMAIL` / `PGADMIN_PASSWORD` de tu `.env` — usa una contraseña real ahí,
+porque a diferencia de las bases de datos (que solo escuchan en `127.0.0.1` dentro de la
+instancia), pgAdmin **sí** queda alcanzable desde cualquier IP a través de nginx; su login
+es la única protección. La primera vez, agrega los dos servidores manualmente (**Add New
+Server**):
 
 | Campo | `users-db` | `spotsapp-db` |
 |---|---|---|
@@ -79,3 +85,9 @@ Ver [`docs/despliegue-ec2.md`](./docs/despliegue-ec2.md) — la mecánica no cam
 Docker Compose + IAM Role para S3), solo que ahora `docker compose up -d --build` levanta
 5 servicios en vez de 2, y el puerto público pasa a ser el 80 (nginx) en vez del 8080
 directo al backend.
+
+## Pendiente (ver conversación / próximos pasos)
+
+- Formato de logging estándar (línea única con `sub=`, `event=`, etc.) en ambos micros.
+- Colección de Postman versionada con los flujos punta a punta (login → crear spot → etc.).
+- Medir y completar cobertura de tests al 100% en ambos micros.

@@ -1,5 +1,6 @@
 package com.spotsapp.dto.review
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
@@ -33,6 +34,8 @@ data class ReviewResponse(
     val username: String,
     val rating: Int,
     val comment: String?,
+    @field:JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     val createdAt: Instant,
+    @field:JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     val updatedAt: Instant
 )

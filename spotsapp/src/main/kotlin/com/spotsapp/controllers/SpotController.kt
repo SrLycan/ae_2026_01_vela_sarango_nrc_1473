@@ -54,6 +54,9 @@ class SpotController(
                 "No se pudo identificar al usuario autenticado. Verifica que el token JWT contenga el claim 'username'."
             )
         }
+
+        private fun resolveIsAdmin(authentication: Authentication?): Boolean =
+            authentication?.authorities?.any { it.authority == "ROLE_ADMIN" } ?: false
     }
 
     /** Público — solo spots APPROVED, con filtros opcionales de categoría y rareza. */
@@ -101,10 +104,10 @@ class SpotController(
         authentication: Authentication?
     ): SpotResponse = spotService.update(id, request, resolveUsername(authentication))
 
-    /** USER/ADMIN + propiedad (validada en SpotService). */
+    /** USER/ADMIN + propiedad, o ADMIN sin importar el dueño (moderación) — validado en SpotService. */
     @DeleteMapping("/{id}")
     fun delete(@PathVariable id: Long, authentication: Authentication?): ResponseEntity<Void> {
-        spotService.delete(id, resolveUsername(authentication))
+        spotService.delete(id, resolveUsername(authentication), resolveIsAdmin(authentication))
         return ResponseEntity.noContent().build()
     }
 

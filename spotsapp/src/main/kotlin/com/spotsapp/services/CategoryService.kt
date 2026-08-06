@@ -7,6 +7,7 @@ import com.spotsapp.exceptions.BusinessRuleException
 import com.spotsapp.exceptions.ResourceNotFoundException
 import com.spotsapp.mappers.CategoryMapper
 import com.spotsapp.repositories.CategoryRepository
+import com.spotsapp.utils.normalizeSpaces
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -23,22 +24,30 @@ class CategoryService(
 ) {
 
     fun create(request: CategoryCreateRequest): CategoryResponse {
-        if (categoryRepository.existsByName(request.name)) {
-            throw BusinessRuleException("Ya existe una categoría con el nombre '${request.name}'")
+        val normalized = request.copy(
+            name = request.name.normalizeSpaces(),
+            description = request.description?.normalizeSpaces()?.ifBlank { null }
+        )
+        if (categoryRepository.existsByName(normalized.name)) {
+            throw BusinessRuleException("Ya existe una categoría con el nombre '${normalized.name}'")
         }
-        val saved = categoryRepository.save(categoryMapper.toEntity(request))
+        val saved = categoryRepository.save(categoryMapper.toEntity(normalized))
         return categoryMapper.toResponse(saved)
     }
 
     fun update(id: Long, request: CategoryUpdateRequest): CategoryResponse {
         val category = findEntityOrThrow(id)
+        val normalized = request.copy(
+            name = request.name.normalizeSpaces(),
+            description = request.description?.normalizeSpaces()?.ifBlank { null }
+        )
 
-        val nameTaken = categoryRepository.findByName(request.name)?.let { it.id != id } ?: false
+        val nameTaken = categoryRepository.findByName(normalized.name)?.let { it.id != id } ?: false
         if (nameTaken) {
-            throw BusinessRuleException("Ya existe una categoría con el nombre '${request.name}'")
+            throw BusinessRuleException("Ya existe una categoría con el nombre '${normalized.name}'")
         }
 
-        categoryMapper.applyUpdate(category, request)
+        categoryMapper.applyUpdate(category, normalized)
         return categoryMapper.toResponse(categoryRepository.save(category))
     }
 

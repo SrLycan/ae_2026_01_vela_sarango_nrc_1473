@@ -13,6 +13,9 @@ import com.spotsapp.exceptions.ResourceNotFoundException
 import com.spotsapp.mappers.SpotMapper
 import com.spotsapp.repositories.CategoryRepository
 import com.spotsapp.repositories.SpotRepository
+import com.spotsapp.utils.haversineMeters
+import com.spotsapp.utils.normalizeSpaces
+import com.spotsapp.utils.roundToCoordinatePrecision
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -33,6 +36,17 @@ class SpotService(
 
     companion object {
         private val log = LoggerFactory.getLogger(SpotService::class.java)
+
+        // Estados que "cuentan" para el chequeo de ubicación duplicada — un spot REJECTED
+        // no bloquea al usuario de volver a intentar en el mismo punto.
+        private val ACTIVE_STATUSES = listOf(SpotStatus.PENDING, SpotStatus.APPROVED)
+
+        // Radio de tolerancia para "misma ubicación" (RN nueva). 20m cubre el caso de dos
+        // pines que representan el mismo lugar real pero no cayeron en coordenadas idénticas
+        // (uno elegido por Places Autocomplete, otro arrastrando el pin del mapa) — sigue
+        // siendo lo bastante chico para no bloquear dos spots legítimamente distintos que
+        // están cerca (ej. dos locales en la misma plaza).
+        private const val DUPLICATE_RADIUS_METERS = 20.0
     }
 
     /** RF-03 — el spot siempre nace PENDING (valor por defecto de la entidad, ver SpotMapper).
@@ -44,9 +58,21 @@ class SpotService(
         if (ownerUsername.isBlank()) {
             throw ForbiddenOperationException("No se pudo identificar al usuario autenticado")
         }
-        log.debug("Creando spot '{}' para usuario '{}'", request.name, ownerUsername)
-        val category = findCategoryOrThrow(request.categoryId)
-        val spot = spotMapper.toEntity(request, category, ownerUsername)
+        val normalized = request.copy(
+            name = request.name.normalizeSpaces(),
+            description = request.description.normalizeSpaces(),
+            address = request.address.normalizeSpaces(),
+            latitude = request.latitude.roundToCoordinatePrecision(),
+            longitude = request.longitude.roundToCoordinatePrecision()
+        )
+        if (hasNearbyActiveSpot(ownerUsername, normalized.latitude, normalized.longitude)) {
+            throw BusinessRuleException(
+                "Ya tienes un spot pendiente o aprobado a menos de ${DUPLICATE_RADIUS_METERS.toInt()}m de esa ubicación"
+            )
+        }
+        log.debug("Creando spot '{}' para usuario '{}'", normalized.name, ownerUsername)
+        val category = findCategoryOrThrow(normalized.categoryId)
+        val spot = spotMapper.toEntity(normalized, category, ownerUsername)
         val saved = spotRepository.save(spot)
         log.info("Spot '{}' (id={}) creado exitosamente por '{}'", saved.name, saved.id, ownerUsername)
         return spotMapper.toResponse(saved)
@@ -56,14 +82,26 @@ class SpotService(
         val spot = findEntityOrThrow(id)
         requireOwner(spot.ownerUsername, currentUsername)
 
-        val category = findCategoryOrThrow(request.categoryId)
-        spotMapper.applyUpdate(spot, request, category)
+        val normalized = request.copy(
+            name = request.name.normalizeSpaces(),
+            description = request.description.normalizeSpaces(),
+            address = request.address.normalizeSpaces(),
+            latitude = request.latitude.roundToCoordinatePrecision(),
+            longitude = request.longitude.roundToCoordinatePrecision()
+        )
+        if (hasNearbyActiveSpot(currentUsername, normalized.latitude, normalized.longitude, excludeId = id)) {
+            throw BusinessRuleException(
+                "Ya tienes otro spot pendiente o aprobado a menos de ${DUPLICATE_RADIUS_METERS.toInt()}m de esa ubicación"
+            )
+        }
+        val category = findCategoryOrThrow(normalized.categoryId)
+        spotMapper.applyUpdate(spot, normalized, category)
         return spotMapper.toResponse(spotRepository.save(spot))
     }
 
-    fun delete(id: Long, currentUsername: String) {
+    fun delete(id: Long, currentUsername: String, isAdmin: Boolean) {
         val spot = findEntityOrThrow(id)
-        requireOwner(spot.ownerUsername, currentUsername)
+        requireOwnerOrAdmin(spot.ownerUsername, currentUsername, isAdmin)
         spotRepository.delete(spot)
     }
 
@@ -117,6 +155,25 @@ class SpotService(
     private fun requireOwner(ownerUsername: String, currentUsername: String) {
         if (ownerUsername != currentUsername) {
             throw ForbiddenOperationException("No puedes modificar un spot que no te pertenece")
+        }
+    }
+
+    /** true si el usuario ya tiene un spot PENDING/APPROVED a <= DUPLICATE_RADIUS_METERS de ahí. */
+    private fun hasNearbyActiveSpot(
+        ownerUsername: String, latitude: Double, longitude: Double, excludeId: Long? = null
+    ): Boolean =
+        spotRepository.findByOwnerUsernameAndStatusIn(ownerUsername, ACTIVE_STATUSES)
+            .filter { it.id != excludeId }
+            .any { haversineMeters(it.latitude, it.longitude, latitude, longitude) <= DUPLICATE_RADIUS_METERS }
+
+    /**
+     * Igual que requireOwner(), pero además deja pasar a un ADMIN aunque no sea el dueño —
+     * usado solo en delete(): un admin puede borrar cualquier spot (moderación de contenido),
+     * pero editar (update()) sigue siendo exclusivo del dueño, eso no cambió.
+     */
+    private fun requireOwnerOrAdmin(ownerUsername: String, currentUsername: String, isAdmin: Boolean) {
+        if (ownerUsername != currentUsername && !isAdmin) {
+            throw ForbiddenOperationException("No puedes eliminar un spot que no te pertenece")
         }
     }
 

@@ -38,4 +38,10 @@ interface SpotRepository : JpaRepository<Spot, Long> {
 
     // Validaciones de propiedad (SpotService.update()/delete())
     fun existsByIdAndOwnerUsername(id: Long, ownerUsername: String): Boolean
+
+    // SpotService.create()/update() — trae los spots activos (PENDING/APPROVED) del usuario
+    // para el chequeo de "misma ubicación" por radio (ver utils/haversineMeters). Se hace en
+    // memoria porque son pocos registros por usuario; con volumen alto convendría una consulta
+    // espacial (PostGIS) en vez de esto.
+    fun findByOwnerUsernameAndStatusIn(ownerUsername: String, statuses: List<SpotStatus>): List<Spot>
 }

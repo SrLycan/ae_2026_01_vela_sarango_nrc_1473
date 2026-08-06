@@ -1,5 +1,6 @@
 package com.spotsapp.dto.media
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import com.spotsapp.entities.enums.MediaType
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -38,5 +39,6 @@ data class MediaResponse(
     val url: String,
     val type: MediaType,
     val uploadedByUsername: String,
+    @field:JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     val createdAt: Instant
 )
