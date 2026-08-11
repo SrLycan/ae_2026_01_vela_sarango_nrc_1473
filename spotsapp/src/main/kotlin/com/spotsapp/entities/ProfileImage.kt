@@ -8,9 +8,10 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
-import jakarta.persistence.Lob
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.Instant
 
 /**
@@ -43,7 +44,7 @@ class ProfileImage(
     @Column(name = "content_type", nullable = false, length = 100)
     val contentType: String = "image/jpeg",
 
-    @Lob
+    @JdbcTypeCode(SqlTypes.VARBINARY)
     @Column(name = "image_data", nullable = false)
     val imageData: ByteArray = ByteArray(0),
 
