@@ -48,9 +48,9 @@ class ReviewService(
         return reviewMapper.toResponse(reviewRepository.save(review))
     }
 
-    fun delete(reviewId: Long, username: String) {
+    fun delete(reviewId: Long, username: String, isAdmin: Boolean) {
         val review = findEntityOrThrow(reviewId)
-        requireOwner(review.username, username)
+        requireOwnerOrAdmin(review.username, username, isAdmin)
         reviewRepository.delete(review)
     }
 
@@ -61,6 +61,13 @@ class ReviewService(
     private fun requireOwner(reviewUsername: String, currentUsername: String) {
         if (reviewUsername != currentUsername) {
             throw ForbiddenOperationException("No puedes modificar una reseña que no te pertenece")
+        }
+    }
+
+    /** Igual que requireOwner(), pero un ADMIN también puede borrar (moderación de contenido). */
+    private fun requireOwnerOrAdmin(reviewUsername: String, currentUsername: String, isAdmin: Boolean) {
+        if (reviewUsername != currentUsername && !isAdmin) {
+            throw ForbiddenOperationException("No puedes eliminar una reseña que no te pertenece")
         }
     }
 

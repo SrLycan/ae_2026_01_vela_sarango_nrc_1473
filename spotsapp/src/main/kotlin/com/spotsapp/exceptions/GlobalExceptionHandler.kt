@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.multipart.MaxUploadSizeExceededException
 
 /**
  * Punto único de traducción excepción -> respuesta HTTP para toda la API.
@@ -49,6 +50,11 @@ class GlobalExceptionHandler {
     @ExceptionHandler(BusinessRuleException::class)
     fun handleBusinessRule(ex: BusinessRuleException, request: HttpServletRequest): ResponseEntity<ErrorResponse> =
         build(HttpStatus.BAD_REQUEST, ex.message ?: "Regla de negocio incumplida", request)
+
+    // 400 — el archivo excede spring.servlet.multipart.max-file-size (avatar/banner de perfil)
+    @ExceptionHandler(MaxUploadSizeExceededException::class)
+    fun handleMaxUploadSize(ex: MaxUploadSizeExceededException, request: HttpServletRequest): ResponseEntity<ErrorResponse> =
+        build(HttpStatus.BAD_REQUEST, "La imagen supera el tamaño máximo permitido (5 MB).", request)
 
     // 400 — errores de validación de @Valid en los *CreateRequest/*UpdateRequest
     @ExceptionHandler(MethodArgumentNotValidException::class)

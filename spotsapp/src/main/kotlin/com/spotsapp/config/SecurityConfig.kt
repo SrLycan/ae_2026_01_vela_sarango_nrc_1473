@@ -65,6 +65,12 @@ class SecurityConfig {
                 authorize(HttpMethod.GET, "/feed", hasAnyRole("USER", "ADMIN"))
                 authorize(HttpMethod.GET, "/profile/*/stats", permitAll)
 
+                // --- Foto de perfil / banner (Postgres, no S3) ---
+                authorize(HttpMethod.PUT, "/profile/me/avatar", hasAnyRole("USER", "ADMIN"))
+                authorize(HttpMethod.PUT, "/profile/me/banner", hasAnyRole("USER", "ADMIN"))
+                authorize(HttpMethod.GET, "/profile/*/avatar", permitAll)
+                authorize(HttpMethod.GET, "/profile/*/banner", permitAll)
+
                 // Cualquier otro endpoint no cubierto explícitamente por la matriz
                 authorize(anyRequest, authenticated)
             }

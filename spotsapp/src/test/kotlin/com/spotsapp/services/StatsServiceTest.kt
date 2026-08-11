@@ -3,6 +3,8 @@ package com.spotsapp.services
 import com.spotsapp.entities.Category
 import com.spotsapp.entities.Review
 import com.spotsapp.entities.Spot
+import com.spotsapp.entities.enums.ProfileImageType
+import com.spotsapp.repositories.ProfileImageRepository
 import com.spotsapp.repositories.ReviewRepository
 import io.mockk.every
 import io.mockk.mockk
@@ -12,7 +14,13 @@ import kotlin.test.assertEquals
 class StatsServiceTest {
 
     private val reviewRepository = mockk<ReviewRepository>()
-    private val service = StatsService(reviewRepository)
+    private val profileImageRepository = mockk<ProfileImageRepository>()
+    private val service = StatsService(reviewRepository, profileImageRepository)
+
+    init {
+        every { profileImageRepository.existsByUsernameAndImageType(any(), ProfileImageType.AVATAR) } returns false
+        every { profileImageRepository.existsByUsernameAndImageType(any(), ProfileImageType.BANNER) } returns false
+    }
 
     private fun review() = Review(
         id = 1L,

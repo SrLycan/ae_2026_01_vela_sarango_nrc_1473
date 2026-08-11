@@ -15,6 +15,13 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  # Límite de subida para avatar/banner (ProfileImageController) — 5 MB coincide con
+  # ProfileImageService.MAX_SIZE_BYTES; se deja algo de margen para el multipart en sí.
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 6MB
+
 server:
   port: 8080
 

@@ -47,10 +47,11 @@ class ReviewController(
         authentication: Authentication
     ): ReviewResponse = reviewService.update(id, request, authentication.name)
 
-    /** USER/ADMIN + propiedad. */
+    /** USER/ADMIN + propiedad, o ADMIN sin importar el dueño (moderación) — validado en ReviewService. */
     @DeleteMapping("/reviews/{id}")
     fun delete(@PathVariable id: Long, authentication: Authentication): ResponseEntity<Void> {
-        reviewService.delete(id, authentication.name)
+        val isAdmin = authentication.authorities.any { it.authority == "ROLE_ADMIN" }
+        reviewService.delete(id, authentication.name, isAdmin)
         return ResponseEntity.noContent().build()
     }
 }

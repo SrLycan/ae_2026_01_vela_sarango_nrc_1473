@@ -1,6 +1,8 @@
 package com.spotsapp.services
 
 import com.spotsapp.dto.stats.StatsResponse
+import com.spotsapp.entities.enums.ProfileImageType
+import com.spotsapp.repositories.ProfileImageRepository
 import com.spotsapp.repositories.ReviewRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -12,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 @Transactional(readOnly = true)
 class StatsService(
-    private val reviewRepository: ReviewRepository
+    private val reviewRepository: ReviewRepository,
+    private val profileImageRepository: ProfileImageRepository
 ) {
 
     /** Umbrales de puntos -> (nivel, medalla). Lógica de aplicación, no datos en BD (ADR-003). */
@@ -29,12 +32,19 @@ class StatsService(
         val spotsReviewed = reviewRepository.findByUsername(username).size
         val (level, badge) = resolveLevel(totalPoints)
 
+        val avatarUrl = if (profileImageRepository.existsByUsernameAndImageType(username, ProfileImageType.AVATAR))
+            "/profile/$username/avatar" else null
+        val bannerUrl = if (profileImageRepository.existsByUsernameAndImageType(username, ProfileImageType.BANNER))
+            "/profile/$username/banner" else null
+
         return StatsResponse(
             username = username,
             totalPoints = totalPoints,
             spotsReviewed = spotsReviewed,
             level = level,
-            badge = badge
+            badge = badge,
+            avatarUrl = avatarUrl,
+            bannerUrl = bannerUrl
         )
     }
 
