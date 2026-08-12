@@ -9,6 +9,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class FollowServiceTest {
@@ -45,5 +46,38 @@ class FollowServiceTest {
         every { followRepository.findByFollowerUsernameAndFollowingUsername("ricardo", "ana") } returns null
 
         assertFailsWith<ResourceNotFoundException> { service.unfollow("ricardo", "ana") }
+    }
+
+    @Test
+    fun `unfollow elimina el follow cuando existe`() {
+        val follow = Follow(id = 1L, followerUsername = "ricardo", followingUsername = "ana")
+        every { followRepository.findByFollowerUsernameAndFollowingUsername("ricardo", "ana") } returns follow
+        every { followRepository.deleteByFollowerUsernameAndFollowingUsername("ricardo", "ana") } returns Unit
+
+        service.unfollow("ricardo", "ana")
+
+        verify(exactly = 1) { followRepository.deleteByFollowerUsernameAndFollowingUsername("ricardo", "ana") }
+    }
+
+    @Test
+    fun `getFollowing retorna los usuarios seguidos`() {
+        val follow = Follow(id = 1L, followerUsername = "ricardo", followingUsername = "ana")
+        every { followRepository.findByFollowerUsername("ricardo") } returns listOf(follow)
+
+        val responses = service.getFollowing("ricardo")
+
+        assertEquals(1, responses.size)
+        assertEquals("ana", responses.first().username)
+    }
+
+    @Test
+    fun `getFollowers retorna los seguidores`() {
+        val follow = Follow(id = 1L, followerUsername = "luis", followingUsername = "ricardo")
+        every { followRepository.findByFollowingUsername("ricardo") } returns listOf(follow)
+
+        val responses = service.getFollowers("ricardo")
+
+        assertEquals(1, responses.size)
+        assertEquals("luis", responses.first().username)
     }
 }

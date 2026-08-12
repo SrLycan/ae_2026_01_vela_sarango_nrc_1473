@@ -14,6 +14,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import java.util.Optional
 
@@ -70,6 +71,42 @@ class UserServiceTest {
     }
 
     @Test
+    fun `getAllUsers retorna la lista de usuarios`() {
+        val users = listOf(
+            User(id = 1L, cognitoId = "sub-1", name = "Ana", email = "ana@puce.edu", phone = null),
+            User(id = 2L, cognitoId = "sub-2", name = "Juan", email = null, phone = null),
+        )
+        `when`(userRepository.findAll()).thenReturn(users)
+
+        val responses = userService.getAllUsers()
+
+        assertEquals(2, responses.size)
+        assertEquals("Ana", responses[0].name)
+        assertEquals("sub-2", responses[1].cognitoId)
+    }
+
+    @Test
+    fun `getUserById retorna el usuario cuando existe`() {
+        val user = User(id = 3L, cognitoId = cognitoId, name = "Luis", email = "luis@puce.edu", phone = null)
+        `when`(userRepository.findById(3L)).thenReturn(Optional.of(user))
+
+        val response = userService.getUserById(3L)
+
+        assertEquals(3L, response.id)
+        assertEquals("Luis", response.name)
+        assertEquals(cognitoId, response.cognitoId)
+    }
+
+    @Test
+    fun `getUserById lanza UserNotFoundException cuando no existe`() {
+        `when`(userRepository.findById(99L)).thenReturn(Optional.empty())
+
+        assertThrows<UserNotFoundException> {
+            userService.getUserById(99L)
+        }
+    }
+
+    @Test
     fun `getUserByCognitoId retorna el perfil asociado cuando existe`() {
         val user = User(id = 5L, cognitoId = cognitoId, name = "Maria", email = "maria@puce.edu", phone = null)
 
@@ -92,21 +129,6 @@ class UserServiceTest {
     }
 
     @Test
-    fun `getAllUsers retorna la lista de usuarios`() {
-        val users = listOf(
-            User(id = 1L, cognitoId = "sub-1", name = "Ana", email = "ana@puce.edu", phone = null),
-            User(id = 2L, cognitoId = "sub-2", name = "Juan", email = null, phone = null),
-        )
-        `when`(userRepository.findAll()).thenReturn(users)
-
-        val responses = userService.getAllUsers()
-
-        assertEquals(2, responses.size)
-        assertEquals("Ana", responses[0].name)
-        assertEquals("sub-2", responses[1].cognitoId)
-    }
-
-    @Test
     fun `updateUser actualiza los datos del perfil existente`() {
         val existing = User(id = 7L, cognitoId = cognitoId, name = "Viejo", email = "viejo@puce.edu", phone = null)
         val request = UserRequest(name = "Nuevo Nombre", email = "nuevo@puce.edu", phone = "0988888888")
@@ -120,6 +142,37 @@ class UserServiceTest {
         assertEquals("Nuevo Nombre", response.name)
         assertEquals("nuevo@puce.edu", response.email)
         assertEquals(cognitoId, response.cognitoId)
+    }
+
+    @Test
+    fun `updateUser lanza UserNotFoundException cuando el cognitoId no tiene perfil`() {
+        val request = UserRequest(name = "Ana", email = "ana@puce.edu", phone = null)
+        `when`(userRepository.findByCognitoId(cognitoId)).thenReturn(Optional.empty())
+
+        assertThrows<UserNotFoundException> {
+            userService.updateUser(cognitoId, request)
+        }
+    }
+
+    @Test
+    fun `updateUser lanza BlankNameException cuando el nombre esta vacio`() {
+        val existing = User(id = 7L, cognitoId = cognitoId, name = "Viejo", email = null, phone = null)
+        val request = UserRequest(name = "   ", email = "a@puce.edu", phone = null)
+
+        `when`(userRepository.findByCognitoId(cognitoId)).thenReturn(Optional.of(existing))
+
+        assertThrows<BlankNameException> {
+            userService.updateUser(cognitoId, request)
+        }
+    }
+
+    @Test
+    fun `deleteUser elimina el usuario cuando existe`() {
+        `when`(userRepository.existsById(5L)).thenReturn(true)
+
+        userService.deleteUser(5L)
+
+        verify(userRepository).deleteById(5L)
     }
 
     @Test

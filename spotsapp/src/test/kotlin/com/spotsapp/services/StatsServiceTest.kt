@@ -10,6 +10,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class StatsServiceTest {
 
@@ -45,6 +46,28 @@ class StatsServiceTest {
     }
 
     @Test
+    fun `getStats retorna nivel 2 para 100 puntos`() {
+        every { reviewRepository.sumPointsRewardByUsername("ricardo") } returns 100
+        every { reviewRepository.findByUsername("ricardo") } returns listOf(review())
+
+        val stats = service.getStats("ricardo")
+
+        assertEquals(2, stats.level)
+        assertEquals("Explorador", stats.badge)
+    }
+
+    @Test
+    fun `getStats retorna nivel intermedio segun el umbral correspondiente`() {
+        every { reviewRepository.sumPointsRewardByUsername("ricardo") } returns 200
+        every { reviewRepository.findByUsername("ricardo") } returns listOf(review())
+
+        val stats = service.getStats("ricardo")
+
+        assertEquals(3, stats.level)
+        assertEquals("Aventurero", stats.badge)
+    }
+
+    @Test
     fun `getStats retorna nivel Leyenda cuando supera el ultimo umbral`() {
         every { reviewRepository.sumPointsRewardByUsername("ricardo") } returns 750
         every { reviewRepository.findByUsername("ricardo") } returns listOf(review())
@@ -58,13 +81,28 @@ class StatsServiceTest {
     }
 
     @Test
-    fun `getStats retorna nivel intermedio segun el umbral correspondiente`() {
-        every { reviewRepository.sumPointsRewardByUsername("ricardo") } returns 200
-        every { reviewRepository.findByUsername("ricardo") } returns listOf(review())
+    fun `getStats expone avatarUrl cuando el usuario tiene avatar`() {
+        every { reviewRepository.sumPointsRewardByUsername("ricardo") } returns 0
+        every { reviewRepository.findByUsername("ricardo") } returns emptyList()
+        every { profileImageRepository.existsByUsernameAndImageType("ricardo", ProfileImageType.AVATAR) } returns true
+        every { profileImageRepository.existsByUsernameAndImageType("ricardo", ProfileImageType.BANNER) } returns false
 
         val stats = service.getStats("ricardo")
 
-        assertEquals(3, stats.level)
-        assertEquals("Aventurero", stats.badge)
+        assertEquals("/profile/ricardo/avatar", stats.avatarUrl)
+        assertNull(stats.bannerUrl)
+    }
+
+    @Test
+    fun `getStats expone bannerUrl cuando el usuario tiene banner`() {
+        every { reviewRepository.sumPointsRewardByUsername("ricardo") } returns 0
+        every { reviewRepository.findByUsername("ricardo") } returns emptyList()
+        every { profileImageRepository.existsByUsernameAndImageType("ricardo", ProfileImageType.AVATAR) } returns false
+        every { profileImageRepository.existsByUsernameAndImageType("ricardo", ProfileImageType.BANNER) } returns true
+
+        val stats = service.getStats("ricardo")
+
+        assertEquals("/profile/ricardo/banner", stats.bannerUrl)
+        assertNull(stats.avatarUrl)
     }
 }
